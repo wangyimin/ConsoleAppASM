@@ -31,7 +31,7 @@ namespace ConsoleAppASM
             //typeBuilder.AddInterfaceImplementation(typeof(I));
 
             MethodInfo[] _lst = typeof(A).GetMethods().Cast<MethodInfo>()
-                .Where(el => el.GetCustomAttributes(typeof(LoggerAttribute)).Any()).ToArray();
+                .Where(el => el.IsPublic && el.IsVirtual && el.GetCustomAttributes(typeof(LoggerAttribute)).Any()).ToArray();
 
             foreach (MethodInfo _mi in _lst)
             {
