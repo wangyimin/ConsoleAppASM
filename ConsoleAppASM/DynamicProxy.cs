@@ -7,60 +7,58 @@ namespace ConsoleAppASM
 {
     public class DynamicProxy
     {
+        private static string _WRAPPER_ = "Wrapper";
+
         public static T GetInstance<T>()
         {
-            AssemblyName assemblyName = new AssemblyName();
-            assemblyName.Name = "DynamicWrapper";
-            //AppDomain thisDomain = Thread.GetDomain();
-            AppDomain thisDomain = AppDomain.CurrentDomain;
-            var _asmBuilder = thisDomain.DefineDynamicAssembly(assemblyName,
-                         AssemblyBuilderAccess.Run);
+            var _asm = AppDomain.CurrentDomain.DefineDynamicAssembly(
+                        new AssemblyName("Dynamic" + _WRAPPER_)
+                        , AssemblyBuilderAccess.RunAndCollect);
 
-            var _modBuilder = _asmBuilder.DefineDynamicModule(
-                         _asmBuilder.GetName().Name, false);
+            var _module = _asm.DefineDynamicModule(_asm.GetName().Name);
 
-            TypeBuilder _typeBuilder = _modBuilder.DefineType("Proxy" + typeof(T).Name,
-               TypeAttributes.Public |
-               TypeAttributes.Class |
-               TypeAttributes.AutoClass |
-               TypeAttributes.AnsiClass |
-               TypeAttributes.BeforeFieldInit |
-               TypeAttributes.AutoLayout,
-               typeof(T));
+            TypeBuilder _type = _module.DefineType(_WRAPPER_ + typeof(T).Name,
+                        TypeAttributes.Public |
+                        TypeAttributes.Class |
+                        TypeAttributes.AutoClass |
+                        TypeAttributes.AnsiClass |
+                        TypeAttributes.BeforeFieldInit |
+                        TypeAttributes.AutoLayout,
+                         typeof(T));
 
             //typeBuilder.AddInterfaceImplementation(typeof(I));
 
-            MethodInfo[] _lst = typeof(A).GetMethods().Cast<MethodInfo>()
-                .Where(el => el.IsPublic && el.IsVirtual && el.GetCustomAttributes(typeof(LoggerAttribute)).Any()).ToArray();
+            MethodInfo[] _lst = typeof(T).GetMethods().Cast<MethodInfo>()
+                .Where(el => el.IsPublic 
+                        && el.IsVirtual 
+                        && el.GetCustomAttributes(typeof(LoggerAttribute)).Any()).ToArray();
 
             foreach (MethodInfo _mi in _lst)
             {
-                var _args = _mi.GetParameters();
-                MethodBuilder methodBuilder = _typeBuilder.DefineMethod(
-                    _mi.Name,
-                    MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.ReuseSlot,
-                    _mi.ReturnType, (from _arg in _args select _arg.ParameterType).ToArray()
-                    );
-                _typeBuilder.DefineMethodOverride(methodBuilder, _mi);
+                var _params = _mi.GetParameters();
 
-                ILGenerator _il = methodBuilder.GetILGenerator();
+                MethodBuilder _method = _type.DefineMethod(
+                        _mi.Name,
+                        MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.ReuseSlot,
+                        _mi.ReturnType, _params.Select(el => el.ParameterType).ToArray());
+                _type.DefineMethodOverride(_method, _mi);
+
+                ILGenerator _il = _method.GetILGenerator();
 
                 _il.Emit(OpCodes.Ldarg_0);
-                for (int i = 0; i < _args.Length; i++)
+                for (int i = 0; i < _params.Length; i++)
                 {
                     _il.Emit(OpCodes.Ldarg_S, i + 1);
                 }
                 _il.Emit(OpCodes.Ldstr, "START");
-                _il.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug",
-                    new Type[] { typeof(string) }));
-                _il.Emit(OpCodes.Call, _typeBuilder.BaseType.GetMethod(_mi.Name));
+                _il.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug", new Type[]{typeof(string)}));
+                _il.Emit(OpCodes.Call, _type.BaseType.GetMethod(_mi.Name));
                 _il.Emit(OpCodes.Ldstr, "END");
-                _il.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug",
-                    new Type[] { typeof(string) }));
+                _il.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug", new Type[]{typeof(string)}));
                 _il.Emit(OpCodes.Ret);
             }
 
-            Type type = _typeBuilder.CreateType();
+            Type type = _type.CreateType();
             return (T)Activator.CreateInstance(type);
         }
     }
