@@ -24,7 +24,7 @@ namespace ConsoleAppASM
                         TypeAttributes.AnsiClass |
                         TypeAttributes.BeforeFieldInit |
                         TypeAttributes.AutoLayout,
-                         typeof(T));
+                        typeof(T));
 
             //_type.AddInterfaceImplementation(typeof(I));
 
@@ -36,16 +36,16 @@ namespace ConsoleAppASM
                 ConstructorBuilder _ctor = _type.DefineConstructor(
                       MethodAttributes.Public,
                       CallingConventions.Standard,
-                       _types);
+                      _types);
 
-                ILGenerator ctorIL = _ctor.GetILGenerator();
+                ILGenerator _ctorIL = _ctor.GetILGenerator();
                 
-                ctorIL.Emit(OpCodes.Ldarg_0);
+                _ctorIL.Emit(OpCodes.Ldarg_0);
                 for (int i = 0; i < _types.Length; i++)
-                    ctorIL.Emit(OpCodes.Ldarg_S, i + 1);
+                    _ctorIL.Emit(OpCodes.Ldarg_S, i + 1);
 
-                ctorIL.Emit(OpCodes.Call, _type.BaseType.GetConstructor(_types));
-                ctorIL.Emit(OpCodes.Ret);
+                _ctorIL.Emit(OpCodes.Call, _type.BaseType.GetConstructor(_types));
+                _ctorIL.Emit(OpCodes.Ret);
             }
 
             MethodInfo[] _lstm = typeof(T).GetMethods().Cast<MethodInfo>()
@@ -64,18 +64,18 @@ namespace ConsoleAppASM
 
                 _type.DefineMethodOverride(_method, _mi);
 
-                ILGenerator _il = _method.GetILGenerator();
+                ILGenerator _methodIL = _method.GetILGenerator();
 
-                _il.Emit(OpCodes.Ldarg_0);
+                _methodIL.Emit(OpCodes.Ldarg_0);
                 for (int i = 0; i < _types.Length; i++)
-                    _il.Emit(OpCodes.Ldarg_S, i + 1);
+                    _methodIL.Emit(OpCodes.Ldarg_S, i + 1);
 
-                _il.Emit(OpCodes.Ldstr, "START");
-                _il.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug", new Type[]{typeof(string)}));
-                _il.Emit(OpCodes.Call, _type.BaseType.GetMethod(_mi.Name));
-                _il.Emit(OpCodes.Ldstr, "END");
-                _il.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug", new Type[]{typeof(string)}));
-                _il.Emit(OpCodes.Ret);
+                _methodIL.Emit(OpCodes.Ldstr, "START");
+                _methodIL.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug", new Type[]{typeof(string)}));
+                _methodIL.Emit(OpCodes.Call, _type.BaseType.GetMethod(_mi.Name));
+                _methodIL.Emit(OpCodes.Ldstr, "END");
+                _methodIL.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug", new Type[]{typeof(string)}));
+                _methodIL.Emit(OpCodes.Ret);
             }
 
             Type type = _type.CreateType();

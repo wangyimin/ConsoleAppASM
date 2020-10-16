@@ -13,13 +13,13 @@ namespace ConsoleAppASM
         public virtual int AM1(int param1, bool param2)
         {
             Trace.WriteLine("Method AM1 was called with following parameters: ");
-            Trace.WriteLine($"Ver({Ver}):[{nameof(param1)}:{param1}, {nameof(param2)}:{param2}]");
+            Trace.WriteLine($"Ver({Ver})[{nameof(param1)}:{param1}, {nameof(param2)}:{param2}]");
             return param1;
         }
         public virtual int AM2(int param1, bool param2)
         {
             Trace.WriteLine("Method AM2 was called with following parameters: ");
-            Trace.WriteLine($"Ver({Ver}):[{nameof(param1)}:{param1}, {nameof(param2)}:{param2}]");
+            Trace.WriteLine($"Ver({Ver})[{nameof(param1)}:{param1}, {nameof(param2)}:{param2}]");
             return param1;
         }
     }
