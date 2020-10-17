@@ -70,10 +70,10 @@ namespace ConsoleAppASM
                 for (int i = 0; i < _types.Length; i++)
                     _methodIL.Emit(OpCodes.Ldarg_S, i + 1);
 
-                _methodIL.Emit(OpCodes.Ldstr, "START");
+                _methodIL.Emit(OpCodes.Ldstr, typeof(T).Name + ":" + _mi.Name + " START");
                 _methodIL.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug", new Type[]{typeof(string)}));
                 _methodIL.Emit(OpCodes.Call, _type.BaseType.GetMethod(_mi.Name));
-                _methodIL.Emit(OpCodes.Ldstr, "END");
+                _methodIL.Emit(OpCodes.Ldstr, typeof(T).Name + ":" + _mi.Name + " END");
                 _methodIL.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug", new Type[]{typeof(string)}));
                 _methodIL.Emit(OpCodes.Ret);
             }
