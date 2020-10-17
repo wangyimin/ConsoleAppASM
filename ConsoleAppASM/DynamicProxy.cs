@@ -13,7 +13,7 @@ namespace ConsoleAppASM
 
         public DynamicProxy(IExceptionHandler eh = null)
         {
-            _eh = eh ?? new SampleExceptionHandler();
+            _eh = eh;
         }
 
         public T GetInstance<T>(params object[] param)
@@ -71,13 +71,12 @@ namespace ConsoleAppASM
 
                 _type.DefineMethodOverride(_method, _mi);
 
-
                 ILGenerator _methodIL = _method.GetILGenerator();
 
                 LocalBuilder _r = _mi.ReturnType != typeof(void) ? _methodIL.DeclareLocal(_mi.ReturnType) : default(LocalBuilder);
-                LocalBuilder _e = _methodIL.DeclareLocal(typeof(Exception));
+                LocalBuilder _e = _eh != null ? _methodIL.DeclareLocal(typeof(Exception)) : default(LocalBuilder);
 
-                _methodIL.BeginExceptionBlock();
+                if (_eh != null) _methodIL.BeginExceptionBlock();
 
                 _methodIL.Emit(OpCodes.Ldstr, typeof(T).Name + ":" + _mi.Name + " START");
                 _methodIL.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug", new Type[] { typeof(string) }));
@@ -92,13 +91,13 @@ namespace ConsoleAppASM
                 _methodIL.Emit(OpCodes.Ldstr, typeof(T).Name + ":" + _mi.Name + " END");
                 _methodIL.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug", new Type[]{typeof(string)}));
 
-                _methodIL.BeginCatchBlock(typeof(Exception));
-                _methodIL.Emit(OpCodes.Stloc_S, _e);
-                _methodIL.Emit(OpCodes.Ldarg_0);
-                _methodIL.Emit(OpCodes.Ldloc_S, _e);
-                _methodIL.Emit(OpCodes.Call, _eh.GetType().GetMethod("ExceptionHandler"));
-                _methodIL.EndExceptionBlock();
-
+                if (_eh != null) _methodIL.BeginCatchBlock(typeof(Exception));
+                if (_eh != null) _methodIL.Emit(OpCodes.Stloc_S, _e);
+                if (_eh != null) _methodIL.Emit(OpCodes.Ldarg_0);
+                if (_eh != null) _methodIL.Emit(OpCodes.Ldloc_S, _e);
+                if (_eh != null) _methodIL.Emit(OpCodes.Call, _eh.GetType().GetMethod("ExceptionHandler"));
+                if (_eh != null) _methodIL.EndExceptionBlock();
+                
                 if (_r != null) _methodIL.Emit(OpCodes.Ldloc_S, _r);
                 _methodIL.Emit(OpCodes.Ret);
             }
@@ -118,7 +117,8 @@ namespace ConsoleAppASM
     {
         public void ExceptionHandler(Exception e)
         {
-            System.Diagnostics.Trace.WriteLine(e.Message);
+            System.Diagnostics.Trace.WriteLine(e.StackTrace.ToString());
+            throw new Exception(e.Message, e);
         }
     }
 }
