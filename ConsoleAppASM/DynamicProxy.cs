@@ -9,7 +9,14 @@ namespace ConsoleAppASM
     {
         private static string _WRAPPER_ = "Wrapper";
 
-        public static T GetInstance<T>(params object[] param)
+        private IExceptionHandler _eh = null;
+
+        public DynamicProxy(IExceptionHandler eh = null)
+        {
+            _eh = eh ?? new SampleExceptionHandler();
+        }
+
+        public T GetInstance<T>(params object[] param)
         {
             var _asm = AppDomain.CurrentDomain.DefineDynamicAssembly(
                         new AssemblyName("Dynamic" + _WRAPPER_)
@@ -64,22 +71,54 @@ namespace ConsoleAppASM
 
                 _type.DefineMethodOverride(_method, _mi);
 
+
                 ILGenerator _methodIL = _method.GetILGenerator();
+
+                LocalBuilder _r = _mi.ReturnType != typeof(void) ? _methodIL.DeclareLocal(_mi.ReturnType) : default(LocalBuilder);
+                LocalBuilder _e = _methodIL.DeclareLocal(typeof(Exception));
+
+                _methodIL.BeginExceptionBlock();
+
+                _methodIL.Emit(OpCodes.Ldstr, typeof(T).Name + ":" + _mi.Name + " START");
+                _methodIL.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug", new Type[] { typeof(string) }));
 
                 _methodIL.Emit(OpCodes.Ldarg_0);
                 for (int i = 0; i < _types.Length; i++)
                     _methodIL.Emit(OpCodes.Ldarg_S, i + 1);
 
-                _methodIL.Emit(OpCodes.Ldstr, typeof(T).Name + ":" + _mi.Name + " START");
-                _methodIL.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug", new Type[]{typeof(string)}));
                 _methodIL.Emit(OpCodes.Call, _type.BaseType.GetMethod(_mi.Name));
+                if (_r != null) _methodIL.Emit(OpCodes.Stloc_S, _r);
+
                 _methodIL.Emit(OpCodes.Ldstr, typeof(T).Name + ":" + _mi.Name + " END");
                 _methodIL.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug", new Type[]{typeof(string)}));
+
+                _methodIL.BeginCatchBlock(typeof(Exception));
+                _methodIL.Emit(OpCodes.Stloc_S, _e);
+                _methodIL.Emit(OpCodes.Ldarg_0);
+                _methodIL.Emit(OpCodes.Ldloc_S, _e);
+                _methodIL.Emit(OpCodes.Call, _eh.GetType().GetMethod("ExceptionHandler"));
+                _methodIL.EndExceptionBlock();
+
+                if (_r != null) _methodIL.Emit(OpCodes.Ldloc_S, _r);
                 _methodIL.Emit(OpCodes.Ret);
             }
 
             Type type = _type.CreateType();
             return (T)Activator.CreateInstance(type, param);
+        }
+
+    }
+
+    public interface IExceptionHandler
+    {
+        void ExceptionHandler(Exception e);
+    }
+
+    public class SampleExceptionHandler : IExceptionHandler
+    {
+        public void ExceptionHandler(Exception e)
+        {
+            System.Diagnostics.Trace.WriteLine(e.Message);
         }
     }
 }
