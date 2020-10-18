@@ -75,12 +75,42 @@ namespace ConsoleAppASM
 
                 LocalBuilder _r = _mi.ReturnType != typeof(void) ? _methodIL.DeclareLocal(_mi.ReturnType) : default(LocalBuilder);
                 LocalBuilder _e = _eh != null ? _methodIL.DeclareLocal(typeof(Exception)) : default(LocalBuilder);
-
+                
                 if (_eh != null) _methodIL.BeginExceptionBlock();
 
-                _methodIL.Emit(OpCodes.Ldstr, typeof(T).Name + ":" + _mi.Name + " START");
-                _methodIL.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug", new Type[] { typeof(string) }));
+                LoggerAttribute _attr = ((LoggerAttribute)(_mi.GetCustomAttributes(typeof(LoggerAttribute)).First()));
 
+                // Log(START)
+                if (_attr.Log) _methodIL.Emit(OpCodes.Ldstr, typeof(T).Name + ":" + _mi.Name + " START");
+                if (_attr.Log) _methodIL.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug", new Type[] { typeof(string) }));
+
+                // Before
+                if (_attr.Before != null)
+                {
+                    LocalBuilder _before = _methodIL.DeclareLocal(typeof(IBefore));
+
+                    _methodIL.Emit(OpCodes.Ldtoken, _attr.Before);
+                    _methodIL.Emit(OpCodes.Call, typeof(Type).GetMethod("GetTypeFromHandle", new Type[] { typeof(RuntimeTypeHandle) }));
+                    _methodIL.Emit(OpCodes.Call, typeof(Activator).GetMethod("CreateInstance", new Type[] { typeof(Type) }));
+                    _methodIL.Emit(OpCodes.Castclass, typeof(IBefore));
+                    _methodIL.Emit(OpCodes.Stloc_S, _before);
+                    
+                    _methodIL.Emit(OpCodes.Ldloc_S, _before);
+
+                    _methodIL.Emit(OpCodes.Ldc_I4_S, _types.Length);
+                    _methodIL.Emit(OpCodes.Newarr, typeof(object));
+                    for (int i = 0; i < _types.Length; i++)
+                    {
+                        _methodIL.Emit(OpCodes.Dup);
+                        _methodIL.Emit(OpCodes.Ldc_I4_S, i);
+                        _methodIL.Emit(OpCodes.Ldarg_S, i + 1);
+                        _methodIL.Emit(OpCodes.Box, _types[i]);
+                        _methodIL.Emit(OpCodes.Stelem_Ref);
+                    }
+                    _methodIL.Emit(OpCodes.Call, _before.LocalType.GetMethod("Before"));
+                }
+
+                // Main
                 _methodIL.Emit(OpCodes.Ldarg_0);
                 for (int i = 0; i < _types.Length; i++)
                     _methodIL.Emit(OpCodes.Ldarg_S, i + 1);
@@ -88,9 +118,11 @@ namespace ConsoleAppASM
                 _methodIL.Emit(OpCodes.Call, _type.BaseType.GetMethod(_mi.Name));
                 if (_r != null) _methodIL.Emit(OpCodes.Stloc_S, _r);
 
-                _methodIL.Emit(OpCodes.Ldstr, typeof(T).Name + ":" + _mi.Name + " END");
-                _methodIL.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug", new Type[]{typeof(string)}));
+                // Log(END)
+                if (_attr.Log) _methodIL.Emit(OpCodes.Ldstr, typeof(T).Name + ":" + _mi.Name + " END");
+                if (_attr.Log) _methodIL.Emit(OpCodes.Call, typeof(Logger).GetMethod("Debug", new Type[]{typeof(string)}));
 
+                // Exception
                 if (_eh != null) _methodIL.BeginCatchBlock(typeof(Exception));
                 if (_eh != null) _methodIL.Emit(OpCodes.Stloc_S, _e);
                 if (_eh != null) _methodIL.Emit(OpCodes.Ldarg_0);
@@ -98,6 +130,7 @@ namespace ConsoleAppASM
                 if (_eh != null) _methodIL.Emit(OpCodes.Call, _eh.GetType().GetMethod("ExceptionHandler"));
                 if (_eh != null) _methodIL.EndExceptionBlock();
                 
+                // ReturnValue
                 if (_r != null) _methodIL.Emit(OpCodes.Ldloc_S, _r);
                 _methodIL.Emit(OpCodes.Ret);
             }
@@ -119,6 +152,19 @@ namespace ConsoleAppASM
         {
             System.Diagnostics.Trace.WriteLine(e.StackTrace.ToString());
             throw new Exception(e.Message, e);
+        }
+    }
+
+    public interface IBefore
+    {
+        void Before(params object[] obj);
+    }
+
+    public class ImplBeforeAfter : IBefore
+    {
+        public void Before(params object[] obj)
+        {
+            System.Diagnostics.Trace.WriteLine($"Before medthod is called with parameter: [{String.Join(",", obj)}]");
         }
     }
 }

@@ -9,7 +9,7 @@ namespace ConsoleAppASM
         public A(){}
         public A(string Ver) => this.Ver = Ver;
 
-        [LoggerAttribute(Log = true)]
+        [LoggerAttribute(Log = true, Before = typeof(ImplBeforeAfter))]
         public virtual int AM1(int param1, bool param2)
         {
             Trace.WriteLine("Method AM1 was called with following parameters: ");
