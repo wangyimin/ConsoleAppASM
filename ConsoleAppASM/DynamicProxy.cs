@@ -160,7 +160,7 @@ namespace ConsoleAppASM
         void Before(params object[] obj);
     }
 
-    public class ImplBeforeAfter : IBefore
+    public class SampleBefore : IBefore
     {
         public void Before(params object[] obj)
         {
