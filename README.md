@@ -1,4 +1,7 @@
 # ConsoleAppASM
+
+https://programmer.ink/think/architect-s-way-asm-implementing-simple-aop.html
+
 Output should be,
 
 [DEBUG][2020/10/18 21:56:46.657] A:AM1 START  
